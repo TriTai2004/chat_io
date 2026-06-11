@@ -6,8 +6,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import com.chatio.socket.futures.user.Account;
-import com.chatio.socket.futures.user.AccountRepository;
+import com.chatio.socket.futures.user.model.Account;
+import com.chatio.socket.futures.user.repository.AccountRepository;
 
 import lombok.RequiredArgsConstructor;
 

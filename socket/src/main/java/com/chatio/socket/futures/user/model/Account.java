@@ -1,4 +1,4 @@
-package com.chatio.socket.futures.user;
+package com.chatio.socket.futures.user.model;
 
 import java.time.LocalDateTime;
 
