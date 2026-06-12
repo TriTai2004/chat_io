@@ -6,23 +6,59 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.chatio.socket.futures.auth.dto.LoginRequest;
+import com.chatio.socket.futures.auth.dto.AuthRequest;
+import com.chatio.socket.futures.auth.dto.AuthResponse;
+import com.chatio.socket.futures.auth.dto.RegisterRequest;
+import com.chatio.socket.futures.auth.service.AuthService;
 
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
 public class AuthController {
-    
+    private final AuthService authService;
+
     @PostMapping("/login")
-    public ResponseEntity<?> login(
-        @RequestBody @Valid LoginRequest loginRequest
-    ){
+    public ResponseEntity<AuthResponse> login(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            @RequestBody @Valid AuthRequest loginRequest) {
 
+        AuthResponse authResponse = authService.login(request, response, loginRequest);
 
+        if (authResponse == null) {
+            return ResponseEntity.status(401).body(null);
+        }
 
-        return ResponseEntity.ok(null);
+        return ResponseEntity.ok(authResponse);
+    }
 
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            @RequestBody @Valid RegisterRequest registerRequest) {
+
+        return ResponseEntity.ok(authService.register(request, response, registerRequest));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        authService.logout(response);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<Void> refreshToken(
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+        authService.refreshToken(response, request);
+        return ResponseEntity.ok().build();
     }
 
 }
