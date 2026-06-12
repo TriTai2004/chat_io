@@ -50,6 +50,10 @@ public class Account {
     private String avatar;
 
     @Builder.Default
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    @Builder.Default
     @Column(name = "is_online", nullable = false)
     private boolean online = false;
 

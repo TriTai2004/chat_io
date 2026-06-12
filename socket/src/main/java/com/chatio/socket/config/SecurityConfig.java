@@ -34,7 +34,7 @@ public class SecurityConfig {
                 // Cấu hình phân quyền request
                 .authorizeHttpRequests(r -> r
                         // Cho phép gọi API login mà không cần token
-                        .requestMatchers("api/**").permitAll()
+                        .requestMatchers("/api/v1/**").permitAll()
                         // Tất cả API khác phải có JWT hợp lệ
                         .anyRequest().authenticated());
 
