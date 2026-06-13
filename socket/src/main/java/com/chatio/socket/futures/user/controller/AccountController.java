@@ -54,13 +54,12 @@ public class AccountController {
     }
 
 
-    @PutMapping("/{id}")
+    @PutMapping
     public ResponseEntity<AccountResponse> update(
-        @PathVariable(name = "id") Long id,
         @RequestBody @Valid UpdateAccountRequest accountRequest
     ){
 
-        return ResponseEntity.ok(accountService.update(id, accountRequest));
+        return ResponseEntity.ok(accountService.update(accountRequest));
     }
 
 

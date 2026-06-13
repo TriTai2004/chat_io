@@ -2,6 +2,7 @@ package com.chatio.socket.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -11,6 +12,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.chatio.socket.futures.auth.service.AuthService;
 import com.chatio.socket.security.JwtFilter;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -36,10 +38,24 @@ public class SecurityConfig {
                 // Cấu hình phân quyền request
                 .authorizeHttpRequests(r -> r
                         // Cho phép gọi API login mà không cần token
-                        .requestMatchers("/api/v1/**").permitAll()
+                        .requestMatchers("/api/v1/auth/login").permitAll()
+
+                        .requestMatchers(HttpMethod.GET,"/api/v1/accounts").permitAll()
+                        .requestMatchers(HttpMethod.PUT,"/api/v1/accounts").authenticated()
+                        .requestMatchers(HttpMethod.PATCH,"/api/v1/accounts/**").hasRole("ADMIN")
+
+
                         // Tất cả API khác phải có JWT hợp lệ
                         .anyRequest().authenticated())
-                .oauth2Login(oauth2 -> oauth2.successHandler(authService));
+
+                .oauth2Login(oauth2 -> oauth2.successHandler(authService))
+                .exceptionHandling(ex -> ex
+                    .authenticationEntryPoint(
+                        (request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        }
+                    )
+                );
 
         httpSecurity.addFilterBefore(
                 jwtFilter,
