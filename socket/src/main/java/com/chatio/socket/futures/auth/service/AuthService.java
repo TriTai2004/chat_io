@@ -1,10 +1,17 @@
 package com.chatio.socket.futures.auth.service;
 
+import java.io.IOException;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Service;
 
+import com.chatio.socket.enums.Role;
 import com.chatio.socket.exception.ResourceNotFoundException;
 import com.chatio.socket.exception.UnauthorizedException;
 import com.chatio.socket.futures.auth.dto.AuthRequest;
@@ -23,140 +30,177 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class AuthService {
+public class AuthService extends SimpleUrlAuthenticationSuccessHandler {
 
-    private final JwtUtil jwtUtil;
-    private final PasswordEncoder passwordEncoder;
-    private final AccountRepository accountRepository;
-    private final AuthMapper authMapper;
-    private final CookieUtil cookieUtil;
+        private final JwtUtil jwtUtil;
+        private final PasswordEncoder passwordEncoder;
+        private final AccountRepository accountRepository;
+        private final AuthMapper authMapper;
+        private final CookieUtil cookieUtil;
 
-    public AuthResponse login(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
-            AuthRequest authRequest) {
+        @Value("${frontend.url}")
+        private String URL_FRONTEND;
 
-        Account account = accountRepository.findByEmail(authRequest.getEmail().trim());
 
-        if (account == null || !passwordEncoder.matches(authRequest.getPassword(), account.getPassword())) {
-            return null;
+        public AuthResponse login(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
+                        AuthRequest authRequest) {
+
+                Account account = accountRepository.findByEmail(authRequest.getEmail().trim());
+
+                if (account == null || !passwordEncoder.matches(authRequest.getPassword(), account.getPassword())) {
+                        return null;
+                }
+
+                attachTokens(httpServletResponse, account);
+
+                String refreshToken = jwtUtil.generateRefreshToken(account.getEmail());
+                account.setRefreshToken(refreshToken);
+                account = accountRepository.save(account);
+
+                return authMapper.toResponse(account);
+
         }
 
-        attachTokens(httpServletResponse, account);
+        public AuthResponse register(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
+                        RegisterRequest registerRequest) {
 
-        String refreshToken = jwtUtil.generateRefreshToken(account.getEmail());
-        account.setRefreshToken(refreshToken);
-        account = accountRepository.save(account);
+                String normalizedEmail = registerRequest.getEmail().trim();
 
-        return authMapper.toResponse(account);
+                Account account = accountRepository.findByEmail(normalizedEmail);
 
-    }
+                if (account != null) {
+                        throw new DataIntegrityViolationException("Email is exist");
+                }
 
-    public AuthResponse register(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
-            RegisterRequest registerRequest) {
+                Account entity = Account.builder()
+                                .email(normalizedEmail)
+                                .password(passwordEncoder.encode(registerRequest.getPassword().trim()))
+                                .fullname(registerRequest.getFullname().trim())
+                                .active(true)
+                                .online(true)
+                                .build();
 
-        String normalizedEmail = registerRequest.getEmail().trim();
+                String refreshToken = attachTokens(httpServletResponse, entity);
 
-        Account account = accountRepository.findByEmail(normalizedEmail);
+                entity.setRefreshToken(refreshToken);
 
-        if (account != null) {
-            throw new DataIntegrityViolationException("Email is exist");
+                Account accountSaved = accountRepository.save(entity);
+
+                return authMapper.toResponse(accountSaved);
+
         }
 
-        Account entity = Account.builder()
-                .email(normalizedEmail)
-                .password(passwordEncoder.encode(registerRequest.getPassword().trim()))
-                .fullname(registerRequest.getFullname().trim())
-                .active(true)
-                .online(true)
-                .build();
+        public void logout(HttpServletResponse response) {
 
-        String refreshToken = attachTokens(httpServletResponse, entity);
+                String email = SecurityContextHolder.getContext()
+                                .getAuthentication()
+                                .getName();
 
-        entity.setRefreshToken(refreshToken);
+                Account account = accountRepository.findByEmail(email);
 
-        Account accountSaved = accountRepository.save(entity);
+                if (account != null) {
+                        account.setRefreshToken(null);
+                        accountRepository.save(account);
+                }
 
-        return authMapper.toResponse(accountSaved);
+                response.addHeader(
+                                "Set-Cookie",
+                                "accessToken=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
 
-    }
-
-    public void logout(HttpServletResponse response) {
-
-        String email = SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getName();
-
-        Account account = accountRepository.findByEmail(email);
-
-        if (account != null) {
-            account.setRefreshToken(null);
-            accountRepository.save(account);
+                response.addHeader(
+                                "Set-Cookie",
+                                "refreshToken=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
         }
 
-        response.addHeader(
-                "Set-Cookie",
-                "accessToken=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
+        public void refreshToken(HttpServletResponse response, HttpServletRequest request) {
 
-        response.addHeader(
-                "Set-Cookie",
-                "refreshToken=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
-    }
+                String tokenRefresh = cookieUtil.getRefreshToken(request);
 
-    public void refreshToken (HttpServletResponse response, HttpServletRequest request){
+                if (tokenRefresh == null || tokenRefresh.isBlank()) {
+                        throw new UnauthorizedException("Refresh token is missing");
+                }
 
-        String tokenRefresh = cookieUtil.getRefreshToken(request);
+                try {
+                        String email = jwtUtil.extractEmailFromRefreshToken(tokenRefresh);
+                        Account account = accountRepository.findByEmail(email);
 
-        if (tokenRefresh == null || tokenRefresh.isBlank()) {
-                throw new UnauthorizedException("Refresh token is missing");
+                        if (account == null) {
+                                throw new ResourceNotFoundException("Account not found with email: " + email);
+                        }
+
+                        if (account.getRefreshToken() == null || !account.getRefreshToken().equals(tokenRefresh)) {
+                                throw new UnauthorizedException("Invalid refresh token");
+                        } else {
+                                String tokenNew = jwtUtil.generateToken(account.getEmail(), account.getRole().name());
+                                response.addHeader(
+                                                "Set-Cookie",
+                                                "accessToken=" + tokenNew
+                                                                + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax");
+                        }
+
+                } catch (JwtException e) {
+                        throw new UnauthorizedException("Refresh token is missing");
+                }
+
         }
 
-        try {
-                String email = jwtUtil.extractEmailFromRefreshToken(tokenRefresh);
+        @Override
+        public void onAuthenticationSuccess(HttpServletRequest request,
+                        HttpServletResponse response,
+                        Authentication authentication) throws IOException {
+
+                OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
+
+                String email = oauthUser.getAttribute("email");
+
                 Account account = accountRepository.findByEmail(email);
 
                 if (account == null) {
-                        throw new ResourceNotFoundException("Account not found with email: "+email);
+                        account = Account.builder()
+                                        .email(email)
+                                        .fullname(oauthUser.getAttribute("name"))
+                                        .avatar(oauthUser.getAttribute("picture"))
+                                        .role(Role.USER)
+                                        .active(true)
+                                        .online(true)
+                                        .password("")
+                                        .build();
                 }
 
-                if (account.getRefreshToken() == null || !account.getRefreshToken().equals(tokenRefresh)) {
-                        throw new UnauthorizedException("Invalid refresh token");
-                }else{
-                        String tokenNew = jwtUtil.generateToken(account.getEmail(), account.getRole().name());
-                        response.addHeader(
-                                "Set-Cookie",
-                                "accessToken=" + tokenNew+ "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax");
-                }
+                String refreshToken = attachTokens(response, account);
 
-        } catch (JwtException  e) {
-                throw new UnauthorizedException("Refresh token is missing");
+                account.setRefreshToken(refreshToken);
+
+                accountRepository.save(account);
+
+                response.sendRedirect(URL_FRONTEND);
+
         }
 
+        private String attachTokens(
+                        HttpServletResponse response,
+                        Account account) {
 
-    }
+                String accessToken = jwtUtil.generateToken(
+                                account.getEmail(),
+                                account.getRole().name());
 
-    private String attachTokens(
-            HttpServletResponse response,
-            Account account) {
+                String refreshToken = jwtUtil.generateRefreshToken(
+                                account.getEmail());
 
-        String accessToken = jwtUtil.generateToken(
-                account.getEmail(),
-                account.getRole().name());
+                response.addHeader(
+                                "Set-Cookie",
+                                "accessToken=" + accessToken
+                                                + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax");
 
-        String refreshToken = jwtUtil.generateRefreshToken(
-                account.getEmail());
+                response.addHeader(
+                                "Set-Cookie",
+                                "refreshToken=" + refreshToken
+                                                + "; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax");
 
-        response.addHeader(
-                "Set-Cookie",
-                "accessToken=" + accessToken
-                        + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax");
+                account.setRefreshToken(refreshToken);
 
-        response.addHeader(
-                "Set-Cookie",
-                "refreshToken=" + refreshToken
-                        + "; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax");
-
-        account.setRefreshToken(refreshToken);
-
-        return refreshToken;
-    }
+                return refreshToken;
+        }
 
 }

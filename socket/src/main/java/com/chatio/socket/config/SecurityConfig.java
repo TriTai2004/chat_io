@@ -8,6 +8,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.chatio.socket.futures.auth.service.AuthService;
 import com.chatio.socket.security.JwtFilter;
 
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final AuthService authService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
@@ -36,7 +38,8 @@ public class SecurityConfig {
                         // Cho phép gọi API login mà không cần token
                         .requestMatchers("/api/v1/**").permitAll()
                         // Tất cả API khác phải có JWT hợp lệ
-                        .anyRequest().authenticated());
+                        .anyRequest().authenticated())
+                .oauth2Login(oauth2 -> oauth2.successHandler(authService));
 
         httpSecurity.addFilterBefore(
                 jwtFilter,
