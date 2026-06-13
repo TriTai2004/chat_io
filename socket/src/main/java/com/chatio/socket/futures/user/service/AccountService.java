@@ -7,11 +7,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import com.chatio.socket.enums.Role;
 import com.chatio.socket.exception.ResourceNotFoundException;
-import com.chatio.socket.futures.user.dto.AccountRequest;
 import com.chatio.socket.futures.user.dto.AccountResponse;
 import com.chatio.socket.futures.user.dto.UpdateAccountRequest;
 import com.chatio.socket.futures.user.filter.AccountFilter;
@@ -19,15 +21,19 @@ import com.chatio.socket.futures.user.mapper.AccountMapper;
 import com.chatio.socket.futures.user.model.Account;
 import com.chatio.socket.futures.user.repository.AccountRepository;
 import com.chatio.socket.payload.PaginationResponse;
+import com.chatio.socket.security.CurrentUserService;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class AccountService {
-    
-    @Autowired
-    private AccountMapper accountMapper;
 
-    @Autowired
-    private AccountRepository accountRepository;
+    private final AccountMapper accountMapper;
+
+    private final AccountRepository accountRepository;
+
+    private final CurrentUserService currentUserService;
 
     public PaginationResponse<List<AccountResponse>> findAll(
             Pageable pageable,
@@ -42,9 +48,9 @@ public class AccountService {
             LocalDateTime createdFrom,
             LocalDateTime createdTo,
             LocalDateTime updatedFrom,
-            LocalDateTime updatedTo ) {
+            LocalDateTime updatedTo) {
 
-        Specification<Account> spec = AccountFilter.accountFilter(id, fullname, phone, email, 
+        Specification<Account> spec = AccountFilter.accountFilter(id, fullname, phone, email,
                 avatar, online, active, role, createdFrom, createdTo, updatedFrom, updatedTo);
 
         Page<Account> pages = accountRepository.findAll(spec, pageable);
@@ -52,20 +58,17 @@ public class AccountService {
         List<Account> results = pages.getContent();
 
         return PaginationResponse.<List<AccountResponse>>builder()
-            .currentPage(pages.getNumber())
-            .data(accountMapper.toResponses(results))
-            .totalPages(pages.getTotalPages())
-            .totalItems(pages.getTotalElements())
-            .build();
+                .currentPage(pages.getNumber())
+                .data(accountMapper.toResponses(results))
+                .totalPages(pages.getTotalPages())
+                .totalItems(pages.getTotalElements())
+                .build();
 
     }
 
+    public AccountResponse update(UpdateAccountRequest accountRequest){
 
-    public AccountResponse update(Long id, UpdateAccountRequest accountRequest){
-
-
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: "+id));
+        Account account = currentUserService.getAccount();
 
         accountMapper.updateAccountFromRequest(accountRequest, account);
 
@@ -75,22 +78,17 @@ public class AccountService {
         return accountMapper.toResponse(account);
     }
 
-
-    public AccountResponse updateActive(Long id, Boolean status){
+    public AccountResponse updateActive(Long id, Boolean status) {
 
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: "+id));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + id));
 
         account.setActive(status);
 
         account = accountRepository.save(account);
-        
+
         return accountMapper.toResponse(account);
 
     }
-
-
-
-
 
 }
