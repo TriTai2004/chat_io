@@ -49,6 +49,8 @@ public class SecurityConfig {
 
 
                         .requestMatchers("/api/v1/conversation-members/**").permitAll()
+                        
+                        .requestMatchers("/api/v1/messages/**").permitAll()
 
 
 
