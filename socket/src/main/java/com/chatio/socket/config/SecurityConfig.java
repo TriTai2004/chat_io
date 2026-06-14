@@ -48,6 +48,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/conversations/**").permitAll()
 
 
+                        .requestMatchers("/api/v1/conversation-members/**").permitAll()
+
+
 
                         // Tất cả API khác phải có JWT hợp lệ
                         .anyRequest().authenticated())
