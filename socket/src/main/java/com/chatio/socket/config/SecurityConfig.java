@@ -43,6 +43,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/api/v1/accounts").permitAll()
                         .requestMatchers(HttpMethod.PUT,"/api/v1/accounts").authenticated()
                         .requestMatchers(HttpMethod.PATCH,"/api/v1/accounts/**").hasRole("ADMIN")
+                        
+                        
+                        .requestMatchers("/api/v1/conversations/**").permitAll()
+
 
 
                         // Tất cả API khác phải có JWT hợp lệ
