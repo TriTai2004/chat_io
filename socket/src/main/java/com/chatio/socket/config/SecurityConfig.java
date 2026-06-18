@@ -42,6 +42,13 @@ public class SecurityConfig {
 
                 // Cấu hình phân quyền request
                 .authorizeHttpRequests(r -> r
+
+                        .requestMatchers("/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/webjars/**").permitAll()
+
                         // Cho phép gọi API login mà không cần token
                         .requestMatchers("/api/v1/auth/login").permitAll()
                         .requestMatchers("/api/v1/auth/register").permitAll()
@@ -60,6 +67,7 @@ public class SecurityConfig {
 
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/ws").permitAll()
+
 
 
 

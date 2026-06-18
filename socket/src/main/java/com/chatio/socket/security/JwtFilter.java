@@ -32,6 +32,16 @@ public class JwtFilter extends OncePerRequestFilter {
         String accessToken = cookieUtil.getAccessToken(request);
         String refreshToken = cookieUtil.getRefreshToken(request);
 
+        
+        
+        String path = request.getRequestURI();
+        
+        // NẾU LÀ SWAGGER THÌ CHO QUA NGAY TỪ ĐẦU, KHÔNG ĐỌC COOKIE/TOKEN GÌ HẾT
+        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String token = (accessToken != null && !accessToken.isBlank()) ? accessToken : refreshToken;
 
         if (token == null || token.isBlank()) {
