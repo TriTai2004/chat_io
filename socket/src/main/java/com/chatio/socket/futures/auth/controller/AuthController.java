@@ -1,6 +1,7 @@
 package com.chatio.socket.futures.auth.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -10,6 +11,7 @@ import com.chatio.socket.futures.auth.dto.AuthRequest;
 import com.chatio.socket.futures.auth.dto.AuthResponse;
 import com.chatio.socket.futures.auth.dto.RegisterRequest;
 import com.chatio.socket.futures.auth.service.AuthService;
+import com.chatio.socket.futures.user.dto.AccountResponse;
 
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,7 +33,7 @@ public class AuthController {
         AuthResponse authResponse = authService.login(request, response, loginRequest);
 
         if (authResponse == null) {
-            return ResponseEntity.status(401).body(null);
+            return ResponseEntity.status(404).body(null);
         }
 
         return ResponseEntity.ok(authResponse);
@@ -59,6 +61,12 @@ public class AuthController {
 
         authService.refreshToken(response, request);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<AccountResponse> getMe() {
+
+        return ResponseEntity.ok(authService.getMe());
     }
 
 }

@@ -18,8 +18,11 @@ import com.chatio.socket.futures.auth.dto.AuthRequest;
 import com.chatio.socket.futures.auth.dto.AuthResponse;
 import com.chatio.socket.futures.auth.dto.RegisterRequest;
 import com.chatio.socket.futures.auth.mapper.AuthMapper;
+import com.chatio.socket.futures.user.dto.AccountResponse;
+import com.chatio.socket.futures.user.mapper.AccountMapper;
 import com.chatio.socket.futures.user.model.Account;
 import com.chatio.socket.futures.user.repository.AccountRepository;
+import com.chatio.socket.security.CurrentUserService;
 import com.chatio.socket.security.JwtUtil;
 import com.chatio.socket.utils.CookieUtil;
 
@@ -37,6 +40,8 @@ public class AuthService extends SimpleUrlAuthenticationSuccessHandler {
         private final AccountRepository accountRepository;
         private final AuthMapper authMapper;
         private final CookieUtil cookieUtil;
+        private final CurrentUserService currentUserService;
+        private final AccountMapper accountMapper;
 
         @Value("${frontend.url}")
         private String URL_FRONTEND;
@@ -201,6 +206,20 @@ public class AuthService extends SimpleUrlAuthenticationSuccessHandler {
                 account.setRefreshToken(refreshToken);
 
                 return refreshToken;
+        }
+
+        public AccountResponse getMe() {
+
+                String email = currentUserService.getUsername();
+
+                Account account = accountRepository.findByEmail(email);
+
+                if (account == null) {
+                        throw new ResourceNotFoundException("user not found");
+                }
+
+                return accountMapper.toResponse(account);
+
         }
 
 }
