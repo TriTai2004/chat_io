@@ -24,6 +24,7 @@ import com.chatio.socket.futures.conversationRemember.repository.ConversationMem
 import com.chatio.socket.futures.user.model.Account;
 import com.chatio.socket.futures.user.repository.AccountRepository;
 import com.chatio.socket.payload.PaginationResponse;
+import com.chatio.socket.security.CurrentUserService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,87 +32,121 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ConversationMemberService {
 
-    private final ConversationMemberMapper conversationMemberMapper;
+        private final ConversationMemberMapper conversationMemberMapper;
 
-    private final ConversationMemberRepository conversationMemberRepository;
+        private final ConversationMemberRepository conversationMemberRepository;
 
-    private final ConversationRepository conversationRepository;
+        private final ConversationRepository conversationRepository;
 
-    private final AccountRepository accountRepository;
+        private final AccountRepository accountRepository;
 
-    public PaginationResponse<List<ConversationMemberResponse>> findAll(
-            Pageable pageable,
-            Long conversationId,
-            Long userId,
-            ConversationMemberRole role,
-            LocalDateTime joinedFrom,
-            LocalDateTime joinedTo) {
+        private final CurrentUserService currentUserService;
 
-        Specification<ConversationMember> spec = ConversationMemberFilter.conversationMemberFilter(
-                conversationId, userId, role, joinedFrom, joinedTo);
+        public PaginationResponse<List<ConversationMemberResponse>> findAll(
+                        Pageable pageable,
+                        Long conversationId,
+                        Long userId,
+                        ConversationMemberRole role,
+                        LocalDateTime joinedFrom,
+                        LocalDateTime joinedTo) {
 
-        Page<ConversationMember> pages = conversationMemberRepository.findAll(spec, pageable);
+                Specification<ConversationMember> spec = ConversationMemberFilter.conversationMemberFilter(
+                                conversationId, userId, role, joinedFrom, joinedTo);
 
-        List<ConversationMember> results = pages.getContent();
+                Page<ConversationMember> pages = conversationMemberRepository.findAll(spec, pageable);
 
-        return PaginationResponse.<List<ConversationMemberResponse>>builder()
-                .currentPage(pages.getNumber())
-                .data(conversationMemberMapper.toResponses(results))
-                .totalPages(pages.getTotalPages())
-                .totalItems(pages.getTotalElements())
-                .build();
-    }
+                List<ConversationMember> results = pages.getContent();
 
-    public ConversationMemberResponse findById(Long conversationId, Long userId) {
-        ConversationMember member = conversationMemberRepository.findById(new ConversationMemberId(conversationId, userId))
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conversation member not found with conversationId: " + conversationId + " and userId: " + userId));
-
-        return conversationMemberMapper.toResponse(member);
-    }
-
-    @Transactional
-    public ConversationMemberResponse create(ConversationMemberRequest request) {
-        ConversationMemberId id = new ConversationMemberId(request.getConversationId(), request.getUserId());
-
-        if (conversationMemberRepository.existsById(id)) {
-            throw new IllegalArgumentException("Conversation member already exists");
+                return PaginationResponse.<List<ConversationMemberResponse>>builder()
+                                .currentPage(pages.getNumber())
+                                .data(conversationMemberMapper.toResponses(results))
+                                .totalPages(pages.getTotalPages())
+                                .totalItems(pages.getTotalElements())
+                                .build();
         }
 
-        Conversation conversation = conversationRepository.findById(request.getConversationId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conversation not found with id: " + request.getConversationId()));
+        public ConversationMemberResponse findById(Long conversationId, Long userId) {
+                ConversationMember member = conversationMemberRepository
+                                .findById(new ConversationMemberId(conversationId, userId))
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Conversation member not found with conversationId: " + conversationId
+                                                                + " and userId: " + userId));
 
-        Account account = accountRepository.findById(request.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Account not found with id: " + request.getUserId()));
+                return conversationMemberMapper.toResponse(member);
+        }
 
-        ConversationMember member = conversationMemberMapper.toEntity(request);
-        member.setConversation(conversation);
-        member.setAccount(account);
-        member = conversationMemberRepository.save(member);
+        @Transactional
+        public ConversationMemberResponse create(ConversationMemberRequest request) {
+                ConversationMemberId id = new ConversationMemberId(request.getConversationId(), request.getUserId());
 
-        return conversationMemberMapper.toResponse(member);
-    }
+                if (conversationMemberRepository.existsById(id)) {
+                        throw new IllegalArgumentException("Conversation member already exists");
+                }
 
-    @Transactional
-    public ConversationMemberResponse update(Long conversationId, Long userId, UpdateConversationMemberRequest request) {
-        ConversationMember member = conversationMemberRepository.findById(new ConversationMemberId(conversationId, userId))
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conversation member not found with conversationId: " + conversationId + " and userId: " + userId));
+                Conversation conversation = conversationRepository.findById(request.getConversationId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Conversation not found with id: " + request.getConversationId()));
 
-        conversationMemberMapper.updateConversationMemberFromRequest(request, member);
-        member = conversationMemberRepository.save(member);
+                Account account = accountRepository.findById(request.getUserId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Account not found with id: " + request.getUserId()));
 
-        return conversationMemberMapper.toResponse(member);
-    }
+                ConversationMember member = conversationMemberMapper.toEntity(request);
+                member.setConversation(conversation);
+                member.setAccount(account);
+                member = conversationMemberRepository.save(member);
 
-    @Transactional
-    public void delete(Long conversationId, Long userId) {
-        ConversationMember member = conversationMemberRepository.findById(new ConversationMemberId(conversationId, userId))
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conversation member not found with conversationId: " + conversationId + " and userId: " + userId));
+                return conversationMemberMapper.toResponse(member);
+        }
 
-        conversationMemberRepository.delete(member);
-    }
+        @Transactional
+        public ConversationMemberResponse update(Long conversationId, Long userId,
+                        UpdateConversationMemberRequest request) {
+                ConversationMember member = conversationMemberRepository
+                                .findById(new ConversationMemberId(conversationId, userId))
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Conversation member not found with conversationId: " + conversationId
+                                                                + " and userId: " + userId));
+
+                conversationMemberMapper.updateConversationMemberFromRequest(request, member);
+                member = conversationMemberRepository.save(member);
+
+                return conversationMemberMapper.toResponse(member);
+        }
+
+        @Transactional
+        public void delete(Long conversationId, Long userId) {
+                ConversationMember member = conversationMemberRepository
+                                .findById(new ConversationMemberId(conversationId, userId))
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Conversation member not found with conversationId: " + conversationId
+                                                                + " and userId: " + userId));
+
+                conversationMemberRepository.delete(member);
+        }
+
+        public PaginationResponse<List<ConversationMemberRepository.ChatListProjection>> getChatList(
+                        Pageable pageable) {
+
+
+                String email = currentUserService.getUsername();
+                Account account = accountRepository.findByEmail(email);
+
+                if (account == null) {
+                        throw new ResourceNotFoundException("user not found");
+                }
+
+
+                Page<ConversationMemberRepository.ChatListProjection> pages = conversationMemberRepository.findChatListByUserId(
+                                account.getId(),
+                                pageable);
+
+
+                return PaginationResponse.<List<ConversationMemberRepository.ChatListProjection>>builder()
+                                .currentPage(pages.getNumber())
+                                .data(pages.getContent())
+                                .totalPages(pages.getTotalPages())
+                                .totalItems(pages.getTotalElements())
+                                .build();
+        }
 }

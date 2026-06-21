@@ -49,6 +49,7 @@ public interface ConversationMemberMapper {
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "conversationId", ignore = true)
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "conversation", ignore = true)
     @Mapping(target = "account", ignore = true)
