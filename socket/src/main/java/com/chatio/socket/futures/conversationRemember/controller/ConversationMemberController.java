@@ -54,6 +54,14 @@ public class ConversationMemberController {
         return ResponseEntity.ok(conversationMemberService.findById(conversationId, userId));
     }
 
+    @GetMapping("/getChatList")
+    public ResponseEntity<?> getListConversation(
+            @PageableDefault(page = 0, size = 10) Pageable pageable
+    ){
+
+        return ResponseEntity.ok(conversationMemberService.getChatList(pageable));
+    }
+
     @PostMapping
     public ResponseEntity<ConversationMemberResponse> create(
             @RequestBody @Valid ConversationMemberRequest request) {
