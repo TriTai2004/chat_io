@@ -21,6 +21,7 @@ import com.chatio.socket.futures.message.mapper.MessageMapper;
 import com.chatio.socket.futures.message.model.Message;
 import com.chatio.socket.futures.message.model.MessageType;
 import com.chatio.socket.futures.message.repository.MessageRepository;
+import com.chatio.socket.futures.message.repository.MessageRepository.MessageProjection;
 import com.chatio.socket.futures.user.repository.AccountRepository;
 import com.chatio.socket.payload.PaginationResponse;
 
@@ -50,7 +51,8 @@ public class MessageService {
             LocalDateTime createdFrom,
             LocalDateTime createdTo) {
 
-        Specification<Message> spec = MessageFilter.messageFilter(id, conversationId, senderId, type, seen, createdFrom, createdTo);
+        Specification<Message> spec = MessageFilter.messageFilter(id, conversationId, senderId, type, seen, createdFrom,
+                createdTo);
 
         Page<Message> pages = messageRepository.findAll(spec, pageable);
 
@@ -79,9 +81,11 @@ public class MessageService {
 
         Message message = messageMapper.toEntity(request);
         message.setConversation(conversationRepository.findById(request.getConversationId())
-                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + request.getConversationId())));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Conversation not found with id: " + request.getConversationId())));
         message.setSender(accountRepository.findById(request.getSenderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + request.getSenderId())));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Account not found with id: " + request.getSenderId())));
         if (!conversationMemberRepository.existsById(
                 new ConversationMember.ConversationMemberId(request.getConversationId(), request.getSenderId()))) {
             throw new IllegalArgumentException("Sender is not a member of this conversation");
@@ -129,5 +133,22 @@ public class MessageService {
         if ((type == MessageType.IMAGE || type == MessageType.FILE) && (imageUrl == null || imageUrl.isBlank())) {
             throw new IllegalArgumentException("imageUrl is required for image/file message");
         }
+    }
+
+    public PaginationResponse<List<MessageProjection>> getMessages(
+            Long conversationId,
+            Pageable pageable) {
+
+        Page<MessageProjection> page = messageRepository.findMessagesByConversationId(
+                conversationId,
+                pageable);
+
+        return PaginationResponse
+                .<List<MessageProjection>>builder()
+                .currentPage(page.getNumber())
+                .data(page.getContent())
+                .totalPages(page.getTotalPages())
+                .totalItems(page.getTotalElements())
+                .build();
     }
 }

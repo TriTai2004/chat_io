@@ -47,10 +47,20 @@ public class MessageController {
         return ResponseEntity.ok(messageService.findAll(
                 pageable, id, conversationId, senderId, type, seen, createdFrom, createdTo));
     }
+    
 
     @GetMapping("/{id}")
     public ResponseEntity<MessageResponse> getById(@PathVariable(name = "id") Long id) {
         return ResponseEntity.ok(messageService.findById(id));
+    }
+
+    @GetMapping("/chat/{conversationId}")
+    public ResponseEntity<?> getMessages(
+        @PathVariable(name = "conversationId") Long conversationId,
+        @PageableDefault(page = 0, size = 10) Pageable pageable
+    ){
+
+        return ResponseEntity.ok(messageService.getMessages(conversationId, pageable));
     }
 
     @PostMapping
