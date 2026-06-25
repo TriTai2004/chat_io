@@ -1,4 +1,4 @@
-package com.chatio.socket.futures.user;
+package com.chatio.socket.futures.user.model;
 
 import java.time.LocalDateTime;
 
@@ -48,6 +48,10 @@ public class Account {
 
     @Column(name = "avatar", length = 500)
     private String avatar;
+
+    @Builder.Default
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
 
     @Builder.Default
     @Column(name = "is_online", nullable = false)

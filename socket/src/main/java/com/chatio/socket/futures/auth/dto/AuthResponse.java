@@ -1,4 +1,4 @@
-package com.chatio.socket.futures.user.dto;
+package com.chatio.socket.futures.auth.dto;
 
 import java.time.LocalDateTime;
 
@@ -9,13 +9,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
 @Builder
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class AccountResponse {
-
-    private Long id;
+public class AuthResponse {
+        private Long id;
     private String fullname;
     private String phone;
     private String email;
@@ -25,5 +24,4 @@ public class AccountResponse {
     private Role role;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
 }
