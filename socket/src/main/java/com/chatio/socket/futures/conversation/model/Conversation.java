@@ -32,6 +32,9 @@ public class Conversation {
     @Column(name = "name", length = 255)
     private String name;
 
+    @Column(name = "img_url")
+    private String imageUrl;
+
     @Builder.Default
     @Column(name = "is_group", nullable = false)
     private boolean group = false;
