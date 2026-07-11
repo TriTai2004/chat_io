@@ -68,4 +68,13 @@ public class ConversationController {
         conversationService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/check-empty/{userId}")
+    public ResponseEntity<?> checkEmpty(
+        @PathVariable(name = "userId") Long userId
+
+    ) {
+
+        return ResponseEntity.ok(conversationService.checkEmpty(userId));
+    }
 }
