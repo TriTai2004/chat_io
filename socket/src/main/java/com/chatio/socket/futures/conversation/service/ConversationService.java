@@ -16,7 +16,9 @@ import com.chatio.socket.futures.conversation.filter.ConversationFiler;
 import com.chatio.socket.futures.conversation.mapper.ConversationMapper;
 import com.chatio.socket.futures.conversation.model.Conversation;
 import com.chatio.socket.futures.conversation.repository.ConversationRepository;
+import com.chatio.socket.futures.user.model.Account;
 import com.chatio.socket.payload.PaginationResponse;
+import com.chatio.socket.security.CurrentUserService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +29,8 @@ public class ConversationService {
     private final ConversationMapper conversationMapper;
 
     private final ConversationRepository conversationRepository;
+
+    private final CurrentUserService currentUserService;
 
     public PaginationResponse<List<ConversationResponse>> findAll(
             Pageable pageable,
@@ -82,5 +86,14 @@ public class ConversationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + id));
 
         conversationRepository.delete(conversation);
+    }
+
+    public Long checkEmpty(Long userId){
+
+        Account account = currentUserService.getAccount();
+
+        Long conversationId = conversationRepository.checkEmpty(account.getId(), userId);
+
+        return conversationId;
     }
 }

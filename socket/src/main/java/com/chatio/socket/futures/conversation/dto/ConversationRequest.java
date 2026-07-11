@@ -20,6 +20,8 @@ public class ConversationRequest {
     @Size(max = 255, message = "Conversation name must not exceed 255 characters")
     private String name;
 
+    private String imageUrl;
+
     @NotNull(message = "Conversation group flag is required")
     private Boolean group;
 }

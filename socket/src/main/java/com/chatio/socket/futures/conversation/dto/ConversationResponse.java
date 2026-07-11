@@ -21,6 +21,8 @@ public class ConversationResponse {
 
     private String name;
 
+    private String imageUrl;
+
     private boolean group;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
