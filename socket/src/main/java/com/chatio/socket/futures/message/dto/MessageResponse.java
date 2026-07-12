@@ -28,6 +28,14 @@ public class MessageResponse {
 
     private MessageType type;
 
+    private String avatarMessage;
+
+    private String avatarChat;
+
+    private String nameChat;
+
+    private String fullname;
+
     private boolean seen;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
