@@ -15,11 +15,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class MessageRequest {
 
-    @NotNull(message = "conversationId is required")
     private Long conversationId;
 
     @NotNull(message = "senderId is required")
     private Long senderId;
+
+    private Long userReceive;
 
     @Size(max = 65535, message = "content is too long")
     private String content;

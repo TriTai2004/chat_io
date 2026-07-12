@@ -31,6 +31,16 @@ public interface MessageMapper {
                 .type(message.getType())
                 .seen(message.isSeen())
                 .createdAt(message.getCreatedAt())
+                .avatarMessage(message.getSender() != null ? message.getSender().getAvatar() : null)
+                .avatarChat(
+                        message.getConversation() != null && message.getConversation().getImageUrl() != null
+                                ? message.getConversation().getImageUrl()
+                                : (message.getSender() != null ? message.getSender().getAvatar() : null))
+                .nameChat(
+                        message.getConversation() != null && message.getConversation().getName() != null
+                                ? message.getConversation().getName()
+                                : (message.getSender() != null ? message.getSender().getFullname() : null))
+                .fullname(message.getSender() != null ? message.getSender().getFullname() : null)
                 .build();
     }
 

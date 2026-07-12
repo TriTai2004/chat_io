@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.chatio.socket.exception.ResourceNotFoundException;
+import com.chatio.socket.futures.conversation.model.Conversation;
 import com.chatio.socket.futures.conversation.repository.ConversationRepository;
 import com.chatio.socket.futures.conversationRemember.model.ConversationMember;
 import com.chatio.socket.futures.conversationRemember.repository.ConversationMemberRepository;
@@ -22,6 +23,7 @@ import com.chatio.socket.futures.message.model.Message;
 import com.chatio.socket.futures.message.model.MessageType;
 import com.chatio.socket.futures.message.repository.MessageRepository;
 import com.chatio.socket.futures.message.repository.MessageRepository.MessageProjection;
+import com.chatio.socket.futures.user.model.Account;
 import com.chatio.socket.futures.user.repository.AccountRepository;
 import com.chatio.socket.payload.PaginationResponse;
 
@@ -79,6 +81,12 @@ public class MessageService {
 
         validateRequest(request.getType(), request.getContent(), request.getImageUrl());
 
+        if (request.getConversationId() == null) {
+            Conversation conversation = createFirst(request);
+            request.setConversationId(conversation.getId());
+            System.out.println("========================================================");
+        }
+
         Message message = messageMapper.toEntity(request);
         message.setConversation(conversationRepository.findById(request.getConversationId())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -93,6 +101,35 @@ public class MessageService {
         message = messageRepository.save(message);
 
         return messageMapper.toResponse(message);
+    }
+
+    @Transactional
+    public Conversation createFirst(MessageRequest messageRequest) {
+
+        Account accountSender = accountRepository.findById(messageRequest.getSenderId())
+                .orElseThrow(() -> new ResourceNotFoundException("user sender not found"));
+
+        Account accountReceive = accountRepository.findById(messageRequest.getUserReceive())
+                .orElseThrow(() -> new ResourceNotFoundException("user Recevie not found"));
+
+        Conversation conversation = new Conversation();
+        conversation = conversationRepository.save(conversation);
+
+        ConversationMember userSender = new ConversationMember();
+        userSender.setConversationId(conversation.getId()); 
+        userSender.setUserId(accountSender.getId()); 
+        userSender.setConversation(conversation);
+        userSender.setAccount(accountSender);
+        conversationMemberRepository.save(userSender);
+
+        ConversationMember userReceive = new ConversationMember();
+        userReceive.setConversationId(conversation.getId()); 
+        userReceive.setUserId(accountReceive.getId()); 
+        userReceive.setConversation(conversation);
+        userReceive.setAccount(accountReceive);
+        conversationMemberRepository.save(userReceive);
+
+        return conversation;
     }
 
     @Transactional
