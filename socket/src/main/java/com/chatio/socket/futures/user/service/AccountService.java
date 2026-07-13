@@ -66,14 +66,13 @@ public class AccountService {
 
     }
 
-    public AccountResponse update(UpdateAccountRequest accountRequest){
+    public AccountResponse update(UpdateAccountRequest accountRequest) {
 
         Account account = currentUserService.getAccount();
 
         accountMapper.updateAccountFromRequest(accountRequest, account);
 
         account = accountRepository.save(account);
-
 
         return accountMapper.toResponse(account);
     }
@@ -88,6 +87,23 @@ public class AccountService {
         account = accountRepository.save(account);
 
         return accountMapper.toResponse(account);
+
+    }
+
+    public PaginationResponse<List<AccountResponse>> getChatPartners(Pageable pageable) {
+
+        Account account = currentUserService.getAccount();
+
+        Page<Account> pages = accountRepository.findChatPartners(account.getId(), pageable);
+
+        List<Account> results = pages.getContent();
+
+        return PaginationResponse.<List<AccountResponse>>builder()
+                .currentPage(pages.getNumber())
+                .data(accountMapper.toResponses(results))
+                .totalPages(pages.getTotalPages())
+                .totalItems(pages.getTotalElements())
+                .build();
 
     }
 
