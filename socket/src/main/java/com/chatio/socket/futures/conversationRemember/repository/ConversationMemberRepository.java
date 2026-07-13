@@ -40,7 +40,7 @@ public interface ConversationMemberRepository
                                         lm.created_at AS latestMessageTime,
                                         lm.type AS latestMessageType,
                                         CASE
-                                                WHEN c.is_group = 1 THEN latest_sender.avatar
+                                                WHEN c.is_group = 1 THEN c.img_url
                                                 ELSE partner.avatar
                                         END AS avatarChat,
                                         CASE
