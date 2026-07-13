@@ -71,4 +71,14 @@ public class AccountController {
 
         return ResponseEntity.ok(accountService.updateActive(id, status));
     }
+
+    @GetMapping("/chatPartners")
+    public ResponseEntity<PaginationResponse<List<AccountResponse>>> getPartners(
+        @PageableDefault(page = 0, size = 10)
+        Pageable pageable
+    ){
+
+        return ResponseEntity.ok(accountService.getChatPartners(pageable));
+    }
+
 }
