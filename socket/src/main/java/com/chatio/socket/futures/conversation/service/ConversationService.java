@@ -5,12 +5,17 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.chatio.socket.exception.ResourceNotFoundException;
@@ -25,8 +30,11 @@ import com.chatio.socket.futures.conversationRemember.model.ConversationMember;
 import com.chatio.socket.futures.conversationRemember.model.ConversationMember.ConversationMemberRole;
 import com.chatio.socket.futures.conversationRemember.repository.ConversationMemberRepository;
 import com.chatio.socket.futures.user.model.Account;
+import com.chatio.socket.futures.user.repository.AccountRepository;
+import com.chatio.socket.futures.websocket.listener.SessionRegistry;
 import com.chatio.socket.payload.PaginationResponse;
 import com.chatio.socket.security.CurrentUserService;
+import com.chatio.socket.utils.NotificationService;
 import com.chatio.socket.utils.UploadImage;
 
 import lombok.RequiredArgsConstructor;
@@ -45,6 +53,8 @@ public class ConversationService {
 
     private final UploadImage imageUploadImage;
 
+    private final NotificationService notificationService;
+
     public PaginationResponse<List<ConversationResponse>> findAll(
             Pageable pageable,
             Long id,
@@ -53,7 +63,8 @@ public class ConversationService {
             LocalDateTime createdFrom,
             LocalDateTime createdTo) {
 
-        Specification<Conversation> spec = ConversationFiler.conversationFilter(id, name, group, createdFrom, createdTo);
+        Specification<Conversation> spec = ConversationFiler.conversationFilter(id, name, group, createdFrom,
+                createdTo);
 
         Page<Conversation> pages = conversationRepository.findAll(spec, pageable);
 
@@ -101,7 +112,7 @@ public class ConversationService {
         conversationRepository.delete(conversation);
     }
 
-    public Long checkEmpty(Long userId){
+    public Long checkEmpty(Long userId) {
 
         Account account = currentUserService.getAccount();
 
@@ -111,7 +122,8 @@ public class ConversationService {
     }
 
     @Transactional
-    public ConversationResponse createGroup( ConversationFirstGroupRequest conversationFirstGroupRequest, MultipartFile avatar) throws IOException {
+    public ConversationResponse createGroup(ConversationFirstGroupRequest conversationFirstGroupRequest,
+            MultipartFile avatar) throws IOException {
 
         Conversation conversation = new Conversation();
         conversation.setName(conversationFirstGroupRequest.getName());
@@ -131,25 +143,24 @@ public class ConversationService {
 
         }
 
-
-        conversation = conversationRepository.save(conversation);
+        Conversation saved = conversationRepository.save(conversation);
 
         Account account = currentUserService.getAccount();
         ConversationMember cv = new ConversationMember();
-            cv.setAccount(account);
-            cv.setConversation(conversation);
-            cv.setConversationId(conversation.getId());
-            cv.setUserId(account.getId());
-            cv.setRole(ConversationMemberRole.OWNER);
+        cv.setAccount(account);
+        cv.setConversation(saved);
+        cv.setConversationId(saved.getId());
+        cv.setUserId(account.getId());
+        cv.setRole(ConversationMemberRole.OWNER);
 
         List<ConversationMember> list = new ArrayList<>();
         list.add(cv);
 
-        for(Long id : conversationFirstGroupRequest.getMembers()){
+        for (Long id : conversationFirstGroupRequest.getMembers()) {
             ConversationMember conversationMember = new ConversationMember();
             conversationMember.setAccount(Account.builder().id(id).build());
-            conversationMember.setConversation(conversation);
-            conversationMember.setConversationId(conversation.getId());
+            conversationMember.setConversation(saved);
+            conversationMember.setConversationId(saved.getId());
             conversationMember.setUserId(id);
             conversationMember.setRole(ConversationMemberRole.MEMBER);
             list.add(conversationMember);
@@ -157,8 +168,17 @@ public class ConversationService {
 
         conversationMemberRepository.saveAll(list);
 
-        return conversationMapper.toResponse(conversation);
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notificationService.sendConversation(
+                                saved.getId(),
+                                account.getEmail());
+                    }
+                });
+
+        return conversationMapper.toResponse(saved);
     }
 
- 
 }

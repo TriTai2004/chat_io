@@ -34,4 +34,15 @@ public interface AccountRepository extends JpaRepository<Account, Long>, JpaSpec
             """, nativeQuery = true)
     Page<Account> findChatPartners(@Param("userId") Long userId, Pageable pageable);
 
+
+
+    @Query(value = """
+                select a.email
+                from accounts a join conversation_members cm
+                on a.id = cm.user_id
+                where cm.conversation_id = :conversationId
+            """, nativeQuery = true)
+    List<String> findEmailUsersByConversationId(@Param("conversationId") Long conversationId);
+
+
 }
